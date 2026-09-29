@@ -28,3 +28,23 @@ class FlightResponse(BaseModel):
 # app/schemas.py
 class StatusUpdate(BaseModel):
     status: str = Field(..., min_length=3, max_length=20)
+    
+# app/schemas.py
+
+class PassengerCreate(BaseModel):
+    name: str = Field(..., min_length=2, max_length=100)
+    passport_number: str = Field(..., min_length=6, max_length=20)
+    seat_number: Optional[str] = None
+    flight_id: int
+
+
+class PassengerResponse(BaseModel):
+    id: int
+    name: str
+    passport_number: str
+    seat_number: Optional[str]
+    flight_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

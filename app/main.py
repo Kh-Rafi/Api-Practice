@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.database import engine, Base
-from app.routers import flights
+from app.routers import flights ,passengers
 
 # Table create (পরে Alembic migration এ নিয়ে যাবো)
 Base.metadata.create_all(bind=engine)
@@ -12,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(flights.router)
+app.include_router(passengers.router)
 
 
 @app.get("/health")

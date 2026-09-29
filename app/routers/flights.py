@@ -86,3 +86,27 @@ def delete_flight(
     db.commit()
 
     return None
+
+
+
+from app import schemas   # উপরে already আছে
+
+@router.get("/{flight_id}/passengers",
+            response_model=List[schemas.PassengerResponse])
+def get_flight_passengers(
+    flight_id: int,
+    db: Session = Depends(get_db)
+):
+    # Step 1: Flight আছে কিনা check
+    flight = db.query(models.Flight).filter(
+        models.Flight.id == flight_id
+    ).first()
+
+    if not flight:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Flight with id {flight_id} not found"
+        )
+
+    # Step 2: Flight এর passengers return করো
+    return flight.passengers
