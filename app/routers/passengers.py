@@ -2,26 +2,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import models, schemas
 from app.database import get_db
-
-router = APIRouter(prefix="/passengers", tags=["Passengers"])
-
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from app import models, schemas
-from app.database import get_db
+from app.security import require_role
 
 router = APIRouter(prefix="/passengers", tags=["Passengers"])
 
 
 # ═══════════════════════════════════════════
-# CREATE Passenger
+# CREATE Passenger (admin, staff only)
 # ═══════════════════════════════════════════
 @router.post("/", response_model=schemas.PassengerResponse,
              status_code=status.HTTP_201_CREATED)
 def create_passenger(
     passenger: schemas.PassengerCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("admin", "staff"))
 ):
     # Step 1: Flight exist করে কিনা check করো
     flight = db.query(models.Flight).filter(
@@ -51,5 +45,3 @@ def create_passenger(
     db.commit()
     db.refresh(new_passenger)
     return new_passenger
-
-

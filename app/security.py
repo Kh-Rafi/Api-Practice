@@ -72,3 +72,44 @@ def get_current_user(
     if user is None:
         raise credentials_exception
     return user
+
+def require_role(*allowed_roles: str):
+    """
+    Role-based access control dependency factory.
+    
+    Usage:
+        Depends(require_role("admin"))
+        Depends(require_role("admin", "staff"))
+    """
+    def role_checker(
+        current_user: models.User = Depends(get_current_user)
+    ) -> models.User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required role: {', '.join(allowed_roles)}. "
+                       f"Your role: {current_user.role}"
+            )
+        return current_user
+    return role_checker
+
+
+def require_role(*allowed_roles: str):
+    """
+    Role-based access control dependency factory.
+    
+    Usage:
+        Depends(require_role("admin"))
+        Depends(require_role("admin", "staff"))
+    """
+    def role_checker(
+        current_user: models.User = Depends(get_current_user)
+    ) -> models.User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Required role: {', '.join(allowed_roles)}. "
+                       f"Your role: {current_user.role}"
+            )
+        return current_user
+    return role_checker

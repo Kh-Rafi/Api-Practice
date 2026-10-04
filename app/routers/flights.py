@@ -1,15 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session                      # ✅ uppercase
+from sqlalchemy.orm import Session
 from typing import List, Optional
 from app import models, schemas
 from app.database import get_db
+from app.security import require_role
 
-router = APIRouter(prefix="/flights", tags=["Flights"])  # ✅ "s" যোগ
+router = APIRouter(prefix="/flights", tags=["Flights"])
 
 
+# ═══════════════════════════════════════════
+# CREATE (admin, staff only)
+# ═══════════════════════════════════════════
 @router.post("/", response_model=schemas.FlightResponse,
              status_code=status.HTTP_201_CREATED)
-def create_flight(flight: schemas.FlightCreate, db: Session = Depends(get_db)):   # ✅
+def create_flight(
+    flight: schemas.FlightCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("admin", "staff"))
+):
     existing = db.query(models.Flight).filter(
         models.Flight.flight_number == flight.flight_number
     ).first()
@@ -27,27 +35,31 @@ def create_flight(flight: schemas.FlightCreate, db: Session = Depends(get_db)): 
     return new_flight
 
 
+# ═══════════════════════════════════════════
+# READ (public — anyone can view)
+# ═══════════════════════════════════════════
 @router.get("/", response_model=List[schemas.FlightResponse])
 def get_flights(
     skip: int = 0,
     limit: int = 10,
-    status: Optional[str] = None,
+    status_filter: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Flight)
-
-    if status:
-        query = query.filter(models.Flight.status == status)
-
-    flights = query.offset(skip).limit(limit).all()
-    return flights
+    if status_filter:
+        query = query.filter(models.Flight.status == status_filter)
+    return query.offset(skip).limit(limit).all()
 
 
+# ═══════════════════════════════════════════
+# UPDATE Status (admin, staff only)
+# ═══════════════════════════════════════════
 @router.patch("/{flight_id}/status", response_model=schemas.FlightResponse)
 def update_flight_status(
     flight_id: int,
     status_update: schemas.StatusUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("admin", "staff"))
 ):
     flight = db.query(models.Flight).filter(
         models.Flight.id == flight_id
@@ -60,17 +72,19 @@ def update_flight_status(
         )
 
     flight.status = status_update.status
-
     db.commit()
     db.refresh(flight)
-
     return flight
 
 
+# ═══════════════════════════════════════════
+# DELETE (admin only)
+# ═══════════════════════════════════════════
 @router.delete("/{flight_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_flight(
     flight_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_role("admin"))
 ):
     flight = db.query(models.Flight).filter(
         models.Flight.id == flight_id
@@ -84,20 +98,15 @@ def delete_flight(
 
     db.delete(flight)
     db.commit()
-
     return None
 
 
-
-from app import schemas   # উপরে already আছে
-
+# ═══════════════════════════════════════════
+# Get Flight's Passengers (public)
+# ═══════════════════════════════════════════
 @router.get("/{flight_id}/passengers",
             response_model=List[schemas.PassengerResponse])
-def get_flight_passengers(
-    flight_id: int,
-    db: Session = Depends(get_db)
-):
-    # Step 1: Flight আছে কিনা check
+def get_flight_passengers(flight_id: int, db: Session = Depends(get_db)):
     flight = db.query(models.Flight).filter(
         models.Flight.id == flight_id
     ).first()
@@ -108,5 +117,4 @@ def get_flight_passengers(
             detail=f"Flight with id {flight_id} not found"
         )
 
-    # Step 2: Flight এর passengers return করো
     return flight.passengers
